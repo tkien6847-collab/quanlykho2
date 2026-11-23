@@ -4,6 +4,7 @@ import com.qlykho.dto.ChiTietPhieuXuatRequest;
 import com.qlykho.dto.TaoPhieuXuatRequest;
 import com.qlykho.entity.ChiTietPhieuXuat;
 import com.qlykho.entity.ChiTietPhieuXuatId;
+import com.qlykho.entity.KhachHang;
 import com.qlykho.entity.PhieuXuat;
 import com.qlykho.repository.ChiTietPhieuXuatRepository;
 import com.qlykho.repository.HangHoaRepository;
@@ -75,7 +76,7 @@ public class PhieuXuatService {
 
     public PhieuXuat capNhatTrangThai(Integer maPX, String trangThai) {
         if (!STATUS_APPROVED.equals(trangThai)) {
-            throw new IllegalArgumentException("Quản lý chỉ có thể đồng ý duyệt phiếu.");
+            throw new IllegalArgumentException("Chỉ hỗ trợ chuyển phiếu xuất sang trạng thái Đã duyệt.");
         }
         PhieuXuat phieuXuat = phieuXuatRepository.findById(maPX)
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy phiếu xuất."));
@@ -95,9 +96,13 @@ public class PhieuXuatService {
                 || request.chiTiet().isEmpty()) {
             throw new IllegalArgumentException("Thông tin phiếu xuất không hợp lệ.");
         }
-        if (!nhanVienRepository.existsById(request.maNV())
-                || !khachHangRepository.existsById(request.maKH())) {
-            throw new IllegalArgumentException("Nhân viên hoặc khách hàng không tồn tại.");
+        if (!nhanVienRepository.existsById(request.maNV())) {
+            throw new IllegalArgumentException("Nhân viên không tồn tại.");
+        }
+        KhachHang customer = khachHangRepository.findById(request.maKH())
+                .orElseThrow(() -> new IllegalArgumentException("Khách hàng không tồn tại."));
+        if (!KhachHang.HOAT_DONG.equals(customer.getTrangThai())) {
+            throw new IllegalArgumentException("Khách hàng đã ngừng hoạt động.");
         }
 
         Set<Integer> productIds = new HashSet<>();

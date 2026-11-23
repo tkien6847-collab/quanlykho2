@@ -66,9 +66,8 @@ public class AdminBootstrapRunner implements ApplicationRunner {
                 || !email.isBlank() || !diaChi.isBlank();
         if (!configured) return;
 
-        if (username.isBlank() || password.isBlank() || hoTen.isBlank() || gioiTinh.isBlank()
-                || ngaySinh.isBlank() || soDienThoai.isBlank() || email.isBlank() || diaChi.isBlank()) {
-            throw new IllegalStateException("Cần cấu hình đầy đủ các biến APP_BOOTSTRAP_ADMIN_* để tạo tài khoản quản trị.");
+        if (username.isBlank() || password.isBlank()) {
+            throw new IllegalStateException("Cần cấu hình tên đăng nhập và mật khẩu để tạo tài khoản quản trị.");
         }
         if (password.length() < 8) {
             throw new IllegalStateException("APP_BOOTSTRAP_ADMIN_PASSWORD phải có ít nhất 8 ký tự.");
@@ -84,12 +83,12 @@ public class AdminBootstrapRunner implements ApplicationRunner {
                 });
 
         NhanVien employee = new NhanVien();
-        employee.setHoTen(hoTen);
-        employee.setGioiTinh(gioiTinh);
-        employee.setNgaySinh(LocalDate.parse(ngaySinh));
-        employee.setSoDienThoai(soDienThoai);
-        employee.setEmail(email);
-        employee.setDiaChi(diaChi);
+        employee.setHoTen(hoTen.strip());
+        employee.setGioiTinh(ThongTinNhanVienText.giaTriTuyChon(gioiTinh));
+        employee.setNgaySinh(ngaySinh.isBlank() ? null : LocalDate.parse(ngaySinh.strip()));
+        employee.setSoDienThoai(ThongTinNhanVienText.giaTriTuyChon(soDienThoai));
+        employee.setEmail(ThongTinNhanVienText.giaTriTuyChon(email));
+        employee.setDiaChi(ThongTinNhanVienText.giaTriTuyChon(diaChi));
         employee.setChucVu("Quản trị viên");
         employee = nhanVienRepository.save(employee);
 

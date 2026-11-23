@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { apiRequest } from "../services/api";
+import CategoryPage from "./CategoryPage";
+import DirectoryList, { type DirectoryConfig, type DirectoryField } from "./DirectoryList";
+import ProfilePage from "./ProfilePage";
 import type {
   Account,
+  CategoryOption,
   Customer,
   DocumentLine,
   Employee,
@@ -19,26 +23,6 @@ interface WorkspaceProps {
   role: Role;
   employeeId: number;
   onNavigate: (page: PageId) => void;
-}
-
-type FieldKind = "text" | "email" | "number" | "date" | "password";
-interface Field {
-  name: string;
-  label: string;
-  kind?: FieldKind;
-  required?: boolean;
-  placeholder?: string;
-}
-
-interface ResourceConfig<T> {
-  title: string;
-  description: string;
-  endpoint: string;
-  idField: keyof T;
-  fields: Field[];
-  columns: { key: keyof T; label: string }[];
-  makePayload: (values: Record<string, string>) => T;
-  editable?: boolean;
 }
 
 function PageHeading({ title, description }: { title: string; description: string }) {
@@ -63,280 +47,146 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
-function ResourcePage<T>({ config, showHeading = true }: { config: ResourceConfig<T>; showHeading?: boolean }) {
-  const [records, setRecords] = useState<T[]>([]);
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [editingId, setEditingId] = useState<string | number | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError("");
-    try {
-      setRecords(await apiRequest<T[]>(config.endpoint));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Không thể tải dữ liệu.");
-    } finally {
-      setLoading(false);
-    }
-  }, [config.endpoint]);
-
-  useEffect(() => { void load(); }, [load]);
-
-  const clearForm = () => {
-    setValues({});
-    setEditingId(null);
-  };
-
-  const startEdit = (record: T) => {
-    setEditingId(record[config.idField] as string | number);
-    setValues(Object.fromEntries(config.fields.map((field) => [
-      field.name,
-      String(Reflect.get(record as object, field.name) ?? ""),
-    ])));
-    setNotice("");
-  };
-
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSaving(true);
-    setError("");
-    setNotice("");
-    try {
-      const payload = config.makePayload(values);
-      if (editingId !== null) {
-        await apiRequest(`${config.endpoint}/${editingId}`, {
-          method: "PUT",
-          body: JSON.stringify(payload),
-        });
-        setNotice("Đã cập nhật thông tin.");
-      } else {
-        await apiRequest(config.endpoint, { method: "POST", body: JSON.stringify(payload) });
-        setNotice("Đã thêm dữ liệu.");
-      }
-      clearForm();
-      await load();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Không thể lưu dữ liệu.");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const remove = async (record: T) => {
-    const id = record[config.idField];
-    if (id === undefined || id === null || !window.confirm("Bạn có chắc muốn xóa mục này?")) return;
-    setError("");
-    setNotice("");
-    try {
-      await apiRequest(`${config.endpoint}/${id}`, { method: "DELETE" });
-      setNotice("Đã xóa dữ liệu.");
-      await load();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Không thể xóa dữ liệu.");
-    }
-  };
-
-  return (
-    <section className="workspace-page">
-      {showHeading && <PageHeading title={config.title} description={config.description} />}
-      <div className="content-grid">
-        <section className="panel data-panel">
-          <div className="panel-heading">
-            <div>
-              <h2>Danh sách</h2>
-              <p>{loading ? "Đang tải dữ liệu..." : `${records.length} bản ghi`}</p>
-            </div>
-            <button className="button button-secondary" onClick={() => void load()} disabled={loading}>
-              ↻ Làm mới
-            </button>
-          </div>
-          {error && <div className="alert alert-error" role="alert">{error}</div>}
-          {notice && <div className="alert alert-success" role="status">{notice}</div>}
-          {loading ? <div className="loading-state">Đang tải...</div> : records.length === 0 ? (
-            <EmptyState message="Dữ liệu sẽ hiển thị tại đây khi có trong hệ thống." />
-          ) : (
-            <div className="table-wrap">
-              <table>
-                <thead><tr>{config.columns.map((column) => <th key={String(column.key)}>{column.label}</th>)}<th>Thao tác</th></tr></thead>
-                <tbody>
-                  {records.map((record, index) => (
-                    <tr key={String(record[config.idField] ?? index)}>
-                      {config.columns.map((column) => (
-                        <td key={String(column.key)}>{String(record[column.key] ?? "—")}</td>
-                      ))}
-                      <td>
-                        <div className="row-actions">
-                          {config.editable !== false && <button className="text-button" onClick={() => startEdit(record)}>Sửa</button>}
-                          <button className="text-button text-danger" onClick={() => void remove(record)}>Xóa</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </section>
-        <section className="panel form-panel">
-          <div className="panel-heading">
-            <div>
-              <h2>{editingId === null ? "Thêm mới" : "Cập nhật"}</h2>
-              <p>Nhập thông tin theo dữ liệu thực tế</p>
-            </div>
-            {editingId !== null && <button className="text-button" onClick={clearForm}>Hủy sửa</button>}
-          </div>
-          <form className="form-stack" onSubmit={(event) => void submit(event)}>
-            {config.fields.map((field) => (
-              <label className="field" key={field.name}>
-                <span>{field.label}{field.required && <b> *</b>}</span>
-                <input
-                  type={field.kind ?? "text"}
-                  required={field.required}
-                  min={field.kind === "number" ? "0" : undefined}
-                  step={field.kind === "number" ? "any" : undefined}
-                  placeholder={field.placeholder ?? `Nhập ${field.label.toLocaleLowerCase("vi")}`}
-                  value={values[field.name] ?? ""}
-                  onChange={(event) => setValues((current) => ({ ...current, [field.name]: event.target.value }))}
-                />
-              </label>
-            ))}
-            <button className="button button-primary button-full" disabled={saving}>
-              {saving ? "Đang lưu..." : editingId === null ? "+ Thêm mới" : "Lưu thay đổi"}
-            </button>
-          </form>
-        </section>
-      </div>
-    </section>
-  );
-}
+const emptyManagerAccount = { hoTen: "", tenDangNhap: "", matKhau: "" };
+const accountsPerPage = 7;
 
 function AccountsPage() {
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [values, setValues] = useState<Record<string, string>>({});
-  const [roleValues, setRoleValues] = useState<Record<number, string>>({});
-  const [loading, setLoading] = useState(true);
+  const [accounts,setAccounts]=useState<Account[]>([]); const [loading,setLoading]=useState(true); const [error,setError]=useState(""); const [notice,setNotice]=useState("");
+  const [query,setQuery]=useState(""); const [page,setPage]=useState(1); const [roleValues,setRoleValues]=useState<Record<number,string>>({});
+  const [managerOpen, setManagerOpen] = useState(false);
+  const [manager, setManager] = useState(emptyManagerAccount);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
 
+  const openManagerForm = () => {
+    setManager(emptyManagerAccount);
+    setManagerOpen(true);
+  };
+
+  const closeManagerForm = () => {
+    setManagerOpen(false);
+    setManager(emptyManagerAccount);
+  };
   const load = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const data = await apiRequest<Account[]>("/api/tai-khoan");
-      setAccounts(data);
-      setRoleValues(Object.fromEntries(data.map((account) => [account.maTK, String(account.maVaiTro)])));
+      const list = await apiRequest<Account[]>("/api/tai-khoan");
+      setAccounts(list.sort((first, second) => second.maTK - first.maTK));
+      setRoleValues(Object.fromEntries(list.map((account) => [account.maTK, String(account.maVaiTro)])));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Không thể tải danh sách tài khoản.");
     } finally {
       setLoading(false);
     }
   }, []);
-
-  useEffect(() => { void load(); }, [load]);
-
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
+  useEffect(()=>{void load();},[load]);
+  const searchTerm = query.toLocaleLowerCase("vi");
+  const filtered = accounts.filter((account) =>
+    [account.hoTen, account.tenDangNhap].some((value) => value?.toLocaleLowerCase("vi").includes(searchTerm)),
+  );
+  const pages = Math.max(1, Math.ceil(filtered.length / accountsPerPage));
+  const currentPage = Math.min(page, pages);
+  const firstRow = (currentPage - 1) * accountsPerPage;
+  const rows = filtered.slice(firstRow, firstRow + accountsPerPage);
+  const saveRole=async(a:Account)=>{try{await apiRequest('/api/tai-khoan/'+a.maTK+'/vai-tro',{method:'PATCH',body:JSON.stringify({maVaiTro:Number(roleValues[a.maTK])})});setNotice('Đã cập nhật vai trò.');await load();}catch(e){setError(e instanceof Error?e.message:'Không cập nhật được vai trò.');}};
+  const toggle=async(a:Account)=>{const trangThai=a.trangThai==='Hoạt động'?'Ngừng hoạt động':'Hoạt động';setError("");setNotice("");try{const updated=await apiRequest<Account>('/api/tai-khoan/'+a.maTK+'/trang-thai',{method:'PATCH',body:JSON.stringify({trangThai})});setAccounts(current=>current.map(item=>item.maTK===updated.maTK?updated:item));setNotice('Đã cập nhật trạng thái tài khoản.');}catch(e){setError(e instanceof Error?e.message:'Không cập nhật được trạng thái.');}};
+  const createManager = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setSaving(true);
-    setError("");
-    setNotice("");
-    const request = {
-      tenDangNhap: values.tenDangNhap,
-      matKhau: values.matKhau,
-    };
     try {
-      await apiRequest("/api/tai-khoan/quan-ly", { method: "POST", body: JSON.stringify(request) });
-      setValues({});
+      await apiRequest("/api/tai-khoan/quan-ly", { method: "POST", body: JSON.stringify(manager) });
+      closeManagerForm();
       setNotice("Đã tạo tài khoản quản lý.");
       await load();
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Không thể tạo tài khoản.");
+      setError(cause instanceof Error ? cause.message : "Không tạo được tài khoản.");
     } finally {
       setSaving(false);
     }
   };
-
-  const updateRole = async (account: Account) => {
-    const maVaiTro = Number(roleValues[account.maTK]);
-    if (!Number.isInteger(maVaiTro) || maVaiTro < 1 || maVaiTro > 3) {
-      setError("Mã vai trò phải là số nguyên từ 1 đến 3.");
-      return;
-    }
-    setError("");
-    setNotice("");
-    try {
-      await apiRequest(`/api/tai-khoan/${account.maTK}/vai-tro`, {
-        method: "PATCH",
-        body: JSON.stringify({ maVaiTro }),
-      });
-      setNotice(`Đã cập nhật vai trò tài khoản ${account.tenDangNhap}.`);
-      await load();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Không thể cập nhật vai trò.");
-    }
-  };
-
-  const remove = async (account: Account) => {
-    if (!window.confirm(`Xóa tài khoản "${account.tenDangNhap}"?`)) return;
-    setError("");
-    setNotice("");
-    try {
-      await apiRequest(`/api/tai-khoan/${account.maTK}`, { method: "DELETE" });
-      setNotice("Đã xóa tài khoản.");
-      await load();
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Không thể xóa tài khoản.");
-    }
-  };
-
-  return (
-    <section className="workspace-page">
-      <PageHeading title="Quản lý tài khoản" description="Xem danh sách, tạo tài khoản quản lý, đổi vai trò và xóa tài khoản." />
-      {(error || notice) && <div className={`alert ${error ? "alert-error" : "alert-success"}`} role={error ? "alert" : "status"}>{error || notice}</div>}
-      <div className="content-grid">
-        <section className="panel data-panel">
+  return <section className="workspace-page"><PageHeading title="Quản lý tài khoản" description=""/>{(error||notice)&&<div className={`alert ${error?'alert-error':'alert-success'}`}>{error||notice}</div>}
+    <section className="panel data-panel account-list-panel"><div className="account-toolbar"><h2>Danh sách tài khoản</h2><div className="account-tools"><label className="account-search"><span>⌕</span><input value={query} onChange={e=>{setQuery(e.target.value);setPage(1);}} placeholder="Tìm theo tên" /></label><button type="button" className="button button-primary" onClick={openManagerForm}>+ Tạo tài khoản quản lý</button></div></div>
+    {loading ? <div className="loading-state">Đang tải...</div> : (
+      <div className="table-wrap">
+        <table>
+          <thead><tr><th scope="col">STT</th><th>Họ tên</th><th>Vai trò</th><th>Trạng thái</th><th>Thao tác</th></tr></thead>
+          <tbody>
+            {rows.map((account, index) => (
+              <tr key={account.maTK}>
+                <td>{firstRow + index + 1}</td>
+                <td>{account.hoTen}</td>
+                <td>
+                  <div className="account-role-control">
+                    <select
+                      value={roleValues[account.maTK] || account.maVaiTro}
+                      onChange={(event) => {
+                        const role = event.target.value;
+                        setRoleValues((current) => ({ ...current, [account.maTK]: role }));
+                      }}
+                    >
+                      <option value="1">Admin</option>
+                      <option value="2">Quản lý</option>
+                      <option value="3">Nhân viên</option>
+                    </select>
+                    <button className="button button-secondary account-action-button" onClick={() => void saveRole(account)}>Lưu</button>
+                  </div>
+                </td>
+                <td><span className={account.trangThai === "Hoạt động" ? "status-active" : "status-inactive"}>{account.trangThai}</span></td>
+                <td>
+                  <button className="button button-secondary account-action-button" onClick={() => void toggle(account)}>
+                    {account.trangThai === "Hoạt động" ? "Ngừng hoạt động" : "Kích hoạt"}
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {!rows.length && <div className="loading-state">Không tìm thấy tài khoản.</div>}
+      </div>
+    )}
+    <div className="pagination">
+      <span>Trang {currentPage}/{pages} · {filtered.length} tài khoản</span>
+      <button className="button button-secondary" disabled={currentPage <= 1} onClick={() => setPage(currentPage - 1)}>Trước</button>
+      <button className="button button-secondary" disabled={currentPage >= pages} onClick={() => setPage(currentPage + 1)}>Sau</button>
+    </div></section>
+    {managerOpen && (
+      <div className="modal-backdrop" role="presentation" onMouseDown={(event) => {
+        if (!saving && event.target === event.currentTarget) closeManagerForm();
+      }}>
+        <section className="details-modal" role="dialog" aria-modal="true" aria-labelledby="manager-title">
           <div className="panel-heading">
-            <div><h2>Danh sách tài khoản</h2><p>{loading ? "Đang tải..." : `${accounts.length} tài khoản`}</p></div>
-            <button className="button button-secondary" onClick={() => void load()} disabled={loading}>↻ Làm mới</button>
+            <h2 id="manager-title">Tạo tài khoản quản lý</h2>
+            <button type="button" className="text-button" onClick={closeManagerForm} disabled={saving}>Đóng</button>
           </div>
-          {loading ? <div className="loading-state">Đang tải...</div> : accounts.length === 0 ? (
-            <EmptyState message="Chưa có tài khoản nào được trả về từ máy chủ." />
-          ) : (
-            <div className="table-wrap">
-              <table>
-                <thead><tr><th>Mã</th><th>Tên đăng nhập</th><th>Trạng thái</th><th>Mã vai trò</th><th>Mã nhân viên</th><th>Thao tác</th></tr></thead>
-                <tbody>{accounts.map((account) => (
-                  <tr key={account.maTK}>
-                    <td>#{account.maTK}</td><td>{account.tenDangNhap}</td><td>{account.trangThai}</td>
-                    <td><input className="inline-input" aria-label={`Mã vai trò tài khoản ${account.tenDangNhap}`} type="number" min="1" max="3" step="1" value={roleValues[account.maTK] ?? ""} onChange={(event) => setRoleValues((current) => ({ ...current, [account.maTK]: event.target.value }))} /></td>
-                    <td>{account.maNV}</td>
-                    <td><div className="row-actions"><button className="text-button" onClick={() => void updateRole(account)}>Cập nhật vai trò</button><button className="text-button text-danger" onClick={() => void remove(account)}>Xóa</button></div></td>
-                  </tr>
-                ))}</tbody>
-              </table>
-            </div>
-          )}
-          <p className="form-hint">Mã vai trò chỉ được nhập từ 1 đến 3.</p>
-        </section>
-        <section className="panel form-panel">
-          <div className="panel-heading"><div><h2>Tạo tài khoản quản lý</h2><p>Hồ sơ nhân viên được tạo tự động</p></div></div>
-          <form className="form-stack" onSubmit={(event) => void submit(event)}>
-            <label className="field"><span>Tên đăng nhập *</span><input required maxLength={50} autoComplete="username" value={values.tenDangNhap ?? ""} onChange={(event) => setValues((current) => ({ ...current, tenDangNhap: event.target.value }))} /></label>
-            <label className="field"><span>Mật khẩu *</span><input type="password" minLength={8} required autoComplete="new-password" value={values.matKhau ?? ""} onChange={(event) => setValues((current) => ({ ...current, matKhau: event.target.value }))} /><small>Mật khẩu cần ít nhất 8 ký tự.</small></label>
-            <button className="button button-primary button-full" disabled={saving}>{saving ? "Đang tạo..." : "+ Tạo tài khoản quản lý"}</button>
+          <form className="form-stack" autoComplete="off" onSubmit={(event) => void createManager(event)}>
+            <label className="field">
+              <span>Họ tên</span>
+              <input maxLength={50} value={manager.hoTen}
+                onChange={(event) => setManager((current) => ({ ...current, hoTen: event.target.value }))} />
+            </label>
+            <label className="field">
+              <span>Tên đăng nhập *</span>
+              <input required maxLength={50} autoComplete="off" value={manager.tenDangNhap}
+                onChange={(event) => setManager((current) => ({ ...current, tenDangNhap: event.target.value }))} />
+            </label>
+            <label className="field">
+              <span>Mật khẩu *</span>
+              <input type="password" required minLength={8} autoComplete="new-password" value={manager.matKhau}
+                onChange={(event) => setManager((current) => ({ ...current, matKhau: event.target.value }))} />
+            </label>
+            <button type="submit" className="button button-primary" disabled={saving}>
+              {saving ? "Đang tạo..." : "Tạo tài khoản"}
+            </button>
           </form>
         </section>
       </div>
-    </section>
-  );
+    )}
+  </section>;
 }
 
 function DocumentPage({ kind, approval = false }: { kind: "inbound" | "outbound"; approval?: boolean }) {
   const isInbound = kind === "inbound";
+  const needsCustomers = !isInbound && !approval;
   const endpoint = isInbound ? "/api/phieu-nhap" : "/api/phieu-xuat";
   const dateField = isInbound ? "ngayNhap" : "ngayXuat";
   const idField = isInbound ? "maPN" : "maPX";
@@ -346,6 +196,7 @@ function DocumentPage({ kind, approval = false }: { kind: "inbound" | "outbound"
     ? `Duyệt phiếu ${isInbound ? "nhập" : "xuất"} kho`
     : `Lập phiếu ${isInbound ? "nhập" : "xuất"} kho`;
   const [documents, setDocuments] = useState<InventoryDocument[]>([]);
+  const [customers, setCustomers] = useState<Pick<Customer, "maKH" | "hoTen">[]>([]);
   const [values, setValues] = useState<Record<string, string>>({});
   const [lines, setLines] = useState<DocumentLine[]>([]);
   const [lineValues, setLineValues] = useState({ maHH: "", soLuong: "", donGia: "", hanSuDung: "" });
@@ -361,13 +212,18 @@ function DocumentPage({ kind, approval = false }: { kind: "inbound" | "outbound"
     setLoading(true);
     setError("");
     try {
-      setDocuments(await apiRequest<InventoryDocument[]>(endpoint));
+      const [documentData, customerData] = await Promise.all([
+        apiRequest<InventoryDocument[]>(endpoint),
+        needsCustomers ? apiRequest<Pick<Customer, "maKH" | "hoTen">[]>("/api/khach-hang/lua-chon") : [],
+      ]);
+      setDocuments(documentData);
+      setCustomers(customerData);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Không thể tải phiếu.");
     } finally {
       setLoading(false);
     }
-  }, [endpoint]);
+  }, [endpoint, needsCustomers]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -488,7 +344,20 @@ function DocumentPage({ kind, approval = false }: { kind: "inbound" | "outbound"
           <div className="form-grid">
             <label className="field"><span>Ngày {isInbound ? "nhập" : "xuất"} *</span><input type="date" required value={values[dateField] ?? ""} onChange={(event) => setValues((current) => ({ ...current, [dateField]: event.target.value }))} /></label>
             <label className="field"><span>Mã nhân viên *</span><input type="number" min="1" required value={values.maNV ?? ""} onChange={(event) => setValues((current) => ({ ...current, maNV: event.target.value }))} /></label>
-            <label className="field"><span>{relatedLabel} *</span><input type="number" min="1" required value={values[relatedField] ?? ""} onChange={(event) => setValues((current) => ({ ...current, [relatedField]: event.target.value }))} /></label>
+            {needsCustomers ? (
+              <label className="field">
+                <span>Khách hàng *</span>
+                <select required value={values.maKH ?? ""} onChange={(event) => {
+                  const maKH = event.target.value;
+                  setValues((current) => ({ ...current, maKH }));
+                }}>
+                  <option value="">{customers.length ? "Chọn khách hàng" : "Chưa có khách hàng đang hoạt động"}</option>
+                  {customers.map(({ maKH, hoTen }) => <option key={maKH} value={maKH}>{hoTen} (#{maKH})</option>)}
+                </select>
+              </label>
+            ) : (
+              <label className="field"><span>{relatedLabel} *</span><input type="number" min="1" required value={values[relatedField] ?? ""} onChange={(event) => setValues((current) => ({ ...current, [relatedField]: event.target.value }))} /></label>
+            )}
             <label className="field form-span"><span>Ghi chú</span><input value={values.ghiChu ?? ""} onChange={(event) => setValues((current) => ({ ...current, ghiChu: event.target.value }))} /></label>
           </div>
           <div className="line-item-entry">
@@ -533,20 +402,47 @@ function DocumentPage({ kind, approval = false }: { kind: "inbound" | "outbound"
 }
 
 function Dashboard({ role, onNavigate }: { role: Role; onNavigate: (page: PageId) => void }) {
+  const [dailySummary, setDailySummary] = useState({ inbound: "—", outbound: "—", pending: "—", lowStock: "—" });
+  const [summaryReady, setSummaryReady] = useState(false);
+  useEffect(() => {
+    if (role !== "admin") return;
+    let active = true;
+    const loadDailySummary = async () => {
+      const [reportResult, productsResult] = await Promise.allSettled([
+        apiRequest<WarehouseReport>("/api/thong-ke"),
+        apiRequest<Product[]>("/api/hang-hoa"),
+      ]);
+      if (!active) return;
+      const report = reportResult.status === "fulfilled" ? reportResult.value : null;
+      const lowStock = productsResult.status === "fulfilled" ? productsResult.value.filter((product) => product.soLuongTon <= 5).length : null;
+      const format = new Intl.NumberFormat("vi-VN").format;
+      setDailySummary({
+        inbound: report ? format(report.soLuongNhapTrongNgay) : "—",
+        outbound: report ? format(report.soLuongXuatTrongNgay) : "—",
+        pending: typeof report?.soPhieuChoDuyet === "number" ? format(report.soPhieuChoDuyet) : "—",
+        lowStock: lowStock === null ? "—" : String(lowStock),
+      });
+      setSummaryReady(true);
+    };
+    void loadDailySummary();
+    return () => { active = false; };
+  }, [role]);
   const cards: Record<Role, { page: PageId; icon: string; title: string; description: string }[]> = {
     admin: [
       { page: "accounts", icon: "♙", title: "Quản lý tài khoản", description: "Danh sách, phân quyền và tạo tài khoản quản lý." },
+      { page: "categories", icon: "▤", title: "Quản lý danh mục", description: "Thêm và tra cứu danh mục hàng hóa." },
       { page: "reports", icon: "▤", title: "Thống kê & báo cáo", description: "Theo dõi lượng hàng nhập, xuất theo ngày và tháng." },
       { page: "approve-inbound", icon: "↓", title: "Duyệt phiếu nhập", description: "Duyệt phiếu và cập nhật số lượng tồn kho." },
+      { page: "approve-outbound", icon: "↑", title: "Duyệt phiếu xuất", description: "Xem và duyệt các phiếu xuất kho." },
     ],
     manager: [
       { page: "reports", icon: "▤", title: "Thống kê & báo cáo", description: "Theo dõi lượng hàng nhập, xuất theo ngày và tháng." },
       { page: "employees", icon: "♙", title: "Quản lý nhân viên", description: "Thêm, cập nhật và quản lý hồ sơ nhân viên." },
-      { page: "employee-accounts", icon: "＋", title: "Tạo tài khoản nhân viên", description: "Tạo tài khoản đăng nhập với vai trò nhân viên." },
       { page: "partners", icon: "♧", title: "NCC / Khách hàng", description: "Danh sách và thông tin đối tác." },
       { page: "approve-inbound", icon: "↓", title: "Duyệt phiếu nhập", description: "Kiểm tra các phiếu nhập kho." },
       { page: "approve-outbound", icon: "↑", title: "Duyệt phiếu xuất", description: "Kiểm tra các phiếu xuất kho." },
       { page: "inventory", icon: "▣", title: "Quản lý hàng hóa", description: "Danh sách, thêm, sửa và xóa hàng hóa." },
+      { page: "categories", icon: "▤", title: "Quản lý danh mục", description: "Thêm và tra cứu danh mục hàng hóa." },
       { page: "stock-search", icon: "⌕", title: "Tra cứu tồn kho", description: "Tra cứu hàng theo danh mục và trạng thái tồn." },
     ],
     employee: [
@@ -559,16 +455,15 @@ function Dashboard({ role, onNavigate }: { role: Role; onNavigate: (page: PageId
   const roleName = role === "admin" ? "Quản trị viên" : role === "manager" ? "Quản lý" : "Nhân viên";
 
   return <section className="workspace-page">
-    <div className="welcome-banner">
-      <div><span className="eyebrow">TRANG CHỦ</span><h1>Xin chào, {roleName} <span className="wave">✦</span></h1><p>Chọn chức năng bạn muốn thực hiện hôm nay.</p></div>
-      <div className="welcome-art" aria-hidden="true"><span>▦</span><i>+</i></div>
-    </div>
-    <div className="section-title"><div><h2>Chức năng</h2><p>Các chức năng được hiển thị theo vai trò giao diện</p></div><span className="role-pill">{roleName}</span></div>
-    <div className="feature-grid">{cards[role].map((card, index) => <button className="feature-card" key={card.page} onClick={() => onNavigate(card.page)}>
-      <span className={`feature-icon feature-icon-${index % 4}`}>{card.icon}</span><span className="feature-arrow">↗</span>
-      <strong>{card.title}</strong><span>{card.description}</span>
-    </button>)}</div>
-    <div className="dashboard-note"><span>i</span><p>Số liệu nhập và xuất được tổng hợp từ các chi tiết phiếu đã lưu trong hệ thống.</p></div>
+    {role !== "admin" && <div className="welcome-banner"><div><span className="eyebrow">TRANG CHỦ</span><h1>Xin chào, {roleName}</h1></div></div>}
+    {role === "admin" && <section className="daily-overview"><div className="section-title"><h2>Tổng quan theo ngày</h2></div><div className="daily-summary-grid">{[
+      { label: "Nhập kho hôm nay", value: dailySummary.inbound, unit: "sản phẩm", tone: "blue", icon: "↓" },
+      { label: "Xuất kho hôm nay", value: dailySummary.outbound, unit: "sản phẩm", tone: "teal", icon: "↑" },
+      { label: "Phiếu chờ duyệt", value: dailySummary.pending, unit: "phiếu", tone: "violet", icon: "◷" },
+      { label: "Cảnh báo tồn kho", value: dailySummary.lowStock, unit: "sản phẩm", tone: "amber", icon: "!" },
+    ].map(item => <article className="daily-summary-card" key={item.label}><span className={`daily-summary-icon ${item.tone}`}>{item.icon}</span><span className="daily-summary-label">{item.label}</span><strong>{summaryReady ? item.value : "…"}</strong><small>{item.value !== "—" ? item.unit : ""}</small></article>)}</div></section>}
+    <div className="section-title"><div><h2>Chức năng</h2></div><span className="role-pill">{roleName}</span></div>
+    <div className="feature-grid">{cards[role].map((card,index)=><button className="feature-card" key={card.page} onClick={()=>onNavigate(card.page)}><span className={`feature-icon feature-icon-${index%4}`}>{card.icon}</span><span className="feature-arrow">↗</span><strong>{card.title}</strong><span>{card.description}</span></button>)}</div>
   </section>;
 }
 
@@ -635,31 +530,19 @@ function ReportsPage() {
 
 export default function Workspace({ page, role, employeeId, onNavigate }: WorkspaceProps) {
   if (page === "dashboard") return <Dashboard role={role} onNavigate={onNavigate} />;
+  if (page === "profile") return <ProfilePage />;
   if (page === "reports") return <ReportsPage />;
   if (page === "stock-search") return <StockSearchPage />;
   if (page === "accounts") return <AccountsPage />;
+  if (page === "categories" && role !== "employee") return <CategoryPage />;
   if (page === "employees") return <EmployeesPage />;
-  if (page === "employee-accounts") return <CreateEmployeeAccountPage />;
   if (page === "inbound") return <InboundPage employeeId={employeeId} />;
-  if (page === "outbound") return <DocumentPage kind="outbound" />;
-  if (page === "approve-inbound") return <DocumentPage kind="inbound" approval />;
-  if (page === "approve-outbound") return <DocumentPage kind="outbound" approval />;
+  if (page === "outbound") return <DocumentPage key={page} kind="outbound" />;
+  if (page === "approve-inbound") return <DocumentPage key={page} kind="inbound" approval />;
+  if (page === "approve-outbound") return <DocumentPage key={page} kind="outbound" approval />;
   if (page === "partners") return <PartnersPage />;
   return <InventoryPage />;
 }
-
-const PRODUCT_CATEGORIES = [
-  "Đồ gia dụng",
-  "Điện tử",
-  "Thực phẩm",
-  "Đồ uống",
-  "Văn phòng phẩm",
-  "Quần áo",
-  "Mỹ phẩm",
-  "Thiết bị",
-  "Phụ kiện",
-  "Khác",
-];
 
 function getLocalDateInputValue() {
   const date = new Date();
@@ -670,6 +553,7 @@ function getLocalDateInputValue() {
 
 function InventoryPage() {
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<CategoryOption[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [values, setValues] = useState({ tenHH: "", donViTinh: "", donGia: "", viTriKe: "", hinhAnh: "", tenDM: "" });
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -683,7 +567,12 @@ function InventoryPage() {
     setLoading(true);
     setError("");
     try {
-      setProducts(await apiRequest<Product[]>("/api/hang-hoa"));
+      const [products, categories] = await Promise.all([
+        apiRequest<Product[]>("/api/hang-hoa"),
+        apiRequest<CategoryOption[]>("/api/danh-muc/lua-chon"),
+      ]);
+      setProducts(products);
+      setCategories(categories);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Không thể tải dữ liệu hàng hóa.");
     } finally {
@@ -783,6 +672,7 @@ function InventoryPage() {
   const pageCount = Math.max(1, Math.ceil(products.length / 10));
   const safePage = Math.min(currentPage, pageCount);
   const visibleProducts = products.slice((safePage - 1) * 10, safePage * 10);
+  const originalCategoryName = editingId === null ? undefined : products.find((product) => product.maHH === editingId)?.tenDM;
 
   return (
     <section className="workspace-page">
@@ -846,7 +736,10 @@ function InventoryPage() {
             <span>Danh mục *</span>
             <select required value={values.tenDM} onChange={(event) => setValues((current) => ({ ...current, tenDM: event.target.value }))}>
               <option value="">Chọn danh mục</option>
-              {PRODUCT_CATEGORIES.map((category) => <option key={category} value={category}>{category}</option>)}
+              {originalCategoryName && !categories.some(({ tenDM }) => tenDM === originalCategoryName) && (
+                <option value={originalCategoryName}>{originalCategoryName} — ngừng hoạt động</option>
+              )}
+              {categories.map(({ maDM, tenDM }) => <option key={maDM} value={tenDM}>{tenDM}</option>)}
             </select>
           </label>
           <label className="field">
@@ -899,7 +792,7 @@ function InboundPage({ employeeId }: { employeeId: number }) {
         apiRequest<Supplier[]>("/api/nha-cung-cap"),
       ]);
       setProducts(productData);
-      setSuppliers(supplierData);
+      setSuppliers(supplierData.filter((supplier) => supplier.trangThai === "Hoạt động"));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : "Không thể tải hàng hóa và nhà cung cấp.");
     } finally {
@@ -1086,138 +979,104 @@ function StockSearchPage() {
   </section>;
 }
 
-function EmployeesPage() {
-  const config: ResourceConfig<Employee> = {
-    title: "Quản lý nhân viên",
-    description: "Xem danh sách, thêm mới, cập nhật và xóa hồ sơ nhân viên.",
-    endpoint: "/api/nhan-vien",
-    idField: "maNV",
-    fields: [
-      { name: "hoTen", label: "Họ và tên", required: true },
-      { name: "gioiTinh", label: "Giới tính", required: true },
-      { name: "ngaySinh", label: "Ngày sinh", kind: "date", required: true },
-      { name: "soDienThoai", label: "Số điện thoại", required: true },
-      { name: "email", label: "Email", kind: "email", required: true },
-      { name: "diaChi", label: "Địa chỉ", required: true },
-      { name: "chucVu", label: "Chức vụ", required: true },
-    ],
-    columns: [
-      { key: "maNV", label: "Mã" },
-      { key: "hoTen", label: "Họ và tên" },
-      { key: "chucVu", label: "Chức vụ" },
-      { key: "soDienThoai", label: "Số điện thoại" },
-      { key: "email", label: "Email" },
-    ],
-    makePayload: (values) => ({
-      hoTen: values.hoTen,
-      gioiTinh: values.gioiTinh,
-      ngaySinh: values.ngaySinh,
-      soDienThoai: values.soDienThoai,
-      email: values.email,
-      diaChi: values.diaChi,
-      chucVu: values.chucVu,
-    }),
-  };
-  return <ResourcePage config={config} />;
-}
-
-function CreateEmployeeAccountPage() {
-  const [values, setValues] = useState({ tenDangNhap: "", matKhau: "" });
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-
-  const submit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setSaving(true);
-    setError("");
-    setNotice("");
-    try {
-      await apiRequest("/api/tai-khoan/nhan-vien", {
-        method: "POST",
-        body: JSON.stringify(values),
+const employeesDirectory: DirectoryConfig<Employee> = {
+  noun: "nhân viên",
+  endpoint: "/api/nhan-vien",
+  createEndpoint: "/api/nhan-vien/tai-khoan",
+  createTitle: "Tạo tài khoản nhân viên",
+  getId: (employee) => employee.maNV,
+  getName: (employee) => [employee.hoTen, employee.tenDangNhap].filter(Boolean).join(" "),
+  getStatus: (employee) => employee.trangThai,
+  fields: (employees, values) => {
+    const fields: DirectoryField[] = [];
+    const unlinked = employees.filter((employee) => employee.trangThai === null);
+    if (unlinked.length > 0) {
+      fields.push({
+        name: "maNV",
+        label: "Hồ sơ nhân viên",
+        type: "select",
+        emptyOption: "Tạo hồ sơ mới",
+        options: unlinked.map((employee) => ({
+          value: employee.maNV,
+          label: employee.hoTen ? `${employee.hoTen} (#${employee.maNV})` : `Hồ sơ #${employee.maNV}`,
+        })),
       });
-      setValues({ tenDangNhap: "", matKhau: "" });
-      setNotice("Đã tạo tài khoản nhân viên. Tài khoản sẽ xuất hiện trong danh sách quản lý tài khoản.");
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : "Không thể tạo tài khoản nhân viên.");
-    } finally {
-      setSaving(false);
     }
-  };
+    if (!values.maNV) fields.push({ name: "hoTen", label: "Họ tên", type: "text", maxLength: 50 });
+    fields.push(
+      { name: "tenDangNhap", label: "Tên đăng nhập", type: "text", maxLength: 50, required: true, autoComplete: "off" },
+      { name: "matKhau", label: "Mật khẩu", type: "password", minLength: 8, required: true, autoComplete: "new-password" },
+    );
+    return fields;
+  },
+  columns: [
+    { key: "hoTen", label: "Họ tên" },
+    { key: "tenDangNhap", label: "Tên đăng nhập" },
+    { key: "chucVu", label: "Chức vụ" },
+    { key: "soDienThoai", label: "Điện thoại" },
+    { key: "email", label: "Email" },
+  ],
+};
 
-  return <section className="workspace-page">
-    <PageHeading title="Tạo tài khoản nhân viên" description="Tạo tài khoản đăng nhập và tự động gán vai trò Nhân viên." />
-    <section className="panel form-panel">
-      <div className="panel-heading"><div><h2>Thông tin đăng nhập</h2><p>Hồ sơ nhân viên được tạo tự động</p></div></div>
-      {error && <div className="alert alert-error" role="alert">{error}</div>}
-      {notice && <div className="alert alert-success" role="status">{notice}</div>}
-      <form className="form-stack" onSubmit={(event) => void submit(event)}>
-        <label className="field">
-          <span>Tên đăng nhập *</span>
-          <input required maxLength={50} autoComplete="username" value={values.tenDangNhap} onChange={(event) => setValues((current) => ({ ...current, tenDangNhap: event.target.value }))} />
-        </label>
-        <label className="field">
-          <span>Mật khẩu *</span>
-          <input type="password" minLength={8} required autoComplete="new-password" value={values.matKhau} onChange={(event) => setValues((current) => ({ ...current, matKhau: event.target.value }))} />
-          <small>Mật khẩu cần ít nhất 8 ký tự.</small>
-        </label>
-        <button className="button button-primary button-full" disabled={saving}>
-          {saving ? "Đang tạo..." : "+ Tạo tài khoản nhân viên"}
-        </button>
-      </form>
+function EmployeesPage() {
+  return (
+    <section className="workspace-page">
+      <div className="page-heading"><h1>Quản lý nhân viên</h1></div>
+      <DirectoryList config={employeesDirectory} />
     </section>
-  </section>;
+  );
 }
+
+const suppliersDirectory: DirectoryConfig<Supplier> = {
+  noun: "nhà cung cấp",
+  endpoint: "/api/nha-cung-cap",
+  getId: (supplier) => supplier.maNCC,
+  getName: (supplier) => supplier.tenNCC,
+  getStatus: (supplier) => supplier.trangThai,
+  fields: [
+    { name: "tenNCC", label: "Tên nhà cung cấp", type: "text", maxLength: 100, required: true },
+    { name: "soDienThoai", label: "Số điện thoại", type: "tel", maxLength: 20, required: true },
+    { name: "email", label: "Email", type: "email", maxLength: 100, required: true },
+    { name: "diaChi", label: "Địa chỉ", type: "text", maxLength: 200, required: true },
+  ],
+  columns: [
+    { key: "tenNCC", label: "Tên nhà cung cấp" },
+    { key: "soDienThoai", label: "Điện thoại" },
+    { key: "email", label: "Email" },
+    { key: "diaChi", label: "Địa chỉ" },
+  ],
+};
+
+const customersDirectory: DirectoryConfig<Customer> = {
+  noun: "khách hàng",
+  endpoint: "/api/khach-hang",
+  getId: (customer) => customer.maKH,
+  getName: (customer) => customer.hoTen,
+  getStatus: (customer) => customer.trangThai,
+  fields: [
+    { name: "hoTen", label: "Họ tên khách hàng", type: "text", maxLength: 30, required: true },
+    { name: "soDienThoai", label: "Số điện thoại", type: "tel", maxLength: 20, required: true },
+    { name: "email", label: "Email", type: "email", maxLength: 100, required: true },
+    { name: "diaChi", label: "Địa chỉ", type: "text", maxLength: 200, required: true },
+  ],
+  columns: [
+    { key: "hoTen", label: "Họ tên" },
+    { key: "soDienThoai", label: "Điện thoại" },
+    { key: "email", label: "Email" },
+    { key: "diaChi", label: "Địa chỉ" },
+  ],
+};
 
 function PartnersPage() {
   const [selected, setSelected] = useState<"suppliers" | "customers">("suppliers");
-  const supplierConfig: ResourceConfig<Supplier> = {
-    title: "Nhà cung cấp / Khách hàng",
-    description: "Quản lý danh sách nhà cung cấp và khách hàng.",
-    endpoint: "/api/nha-cung-cap",
-    idField: "maNCC",
-    editable: false,
-    fields: [
-      { name: "tenNCC", label: "Tên nhà cung cấp", required: true },
-      { name: "soDienThoai", label: "Số điện thoại", required: true },
-      { name: "email", label: "Email", kind: "email", required: true },
-      { name: "diaChi", label: "Địa chỉ", required: true },
-    ],
-    columns: [
-      { key: "maNccCode", label: "Mã" }, { key: "tenNCC", label: "Tên nhà cung cấp" },
-      { key: "soDienThoai", label: "Điện thoại" }, { key: "email", label: "Email" }, { key: "diaChi", label: "Địa chỉ" },
-    ],
-    makePayload: (values) => ({ tenNCC: values.tenNCC, soDienThoai: values.soDienThoai, email: values.email, diaChi: values.diaChi }),
-  };
-  const customerConfig: ResourceConfig<Customer> = {
-    title: "Nhà cung cấp / Khách hàng",
-    description: "Quản lý danh sách nhà cung cấp và khách hàng.",
-    endpoint: "/api/khach-hang",
-    idField: "maKH",
-    editable: false,
-    fields: [
-      { name: "hoTen", label: "Họ tên khách hàng", required: true },
-      { name: "soDienThoai", label: "Số điện thoại", required: true },
-      { name: "email", label: "Email", kind: "email", required: true },
-      { name: "diaChi", label: "Địa chỉ", required: true },
-    ],
-    columns: [
-      { key: "maKH", label: "Mã" }, { key: "hoTen", label: "Họ tên" },
-      { key: "soDienThoai", label: "Điện thoại" }, { key: "email", label: "Email" }, { key: "diaChi", label: "Địa chỉ" },
-    ],
-    makePayload: (values) => ({ hoTen: values.hoTen, soDienThoai: values.soDienThoai, email: values.email, diaChi: values.diaChi }),
-  };
-  const resourcePage = selected === "suppliers"
-    ? <ResourcePage key="suppliers" config={supplierConfig} showHeading={false} />
-    : <ResourcePage key="customers" config={customerConfig} showHeading={false} />;
-
   return <section className="workspace-page">
-    <PageHeading title="Nhà cung cấp / Khách hàng" description="Xem danh sách, thêm mới và xóa thông tin đối tác." />
+    <div className="page-heading"><h1>Nhà cung cấp / Khách hàng</h1></div>
     <div className="tabs" role="tablist" aria-label="Loại đối tác">
       <button role="tab" aria-selected={selected === "suppliers"} className={selected === "suppliers" ? "tab-active" : ""} onClick={() => setSelected("suppliers")}>Nhà cung cấp</button>
       <button role="tab" aria-selected={selected === "customers"} className={selected === "customers" ? "tab-active" : ""} onClick={() => setSelected("customers")}>Khách hàng</button>
     </div>
-    {resourcePage}
+    {selected === "suppliers"
+      ? <DirectoryList key="suppliers" config={suppliersDirectory} />
+      : <DirectoryList key="customers" config={customersDirectory} />}
   </section>;
 }

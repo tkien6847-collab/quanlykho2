@@ -1,5 +1,6 @@
 package com.qlykho.security;
 
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -32,10 +33,11 @@ public class SecurityConfig {
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, exception) ->
-                                response.sendError(HttpServletResponse.SC_UNAUTHORIZED))
+                                response.setStatus(HttpServletResponse.SC_UNAUTHORIZED))
                         .accessDeniedHandler((request, response, exception) ->
-                                response.sendError(HttpServletResponse.SC_FORBIDDEN)))
+                                response.setStatus(HttpServletResponse.SC_FORBIDDEN)))
                 .authorizeHttpRequests(authorize -> authorize
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(
                                 HttpMethod.GET,
                                 "/",
@@ -49,17 +51,20 @@ public class SecurityConfig {
                                 "/webjars/**"
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/danh-muc/**").permitAll()
+                        .requestMatchers("/api/auth/me/profile").hasAnyRole("ADMIN", "MANAGER", "EMPLOYEE")
+                        .requestMatchers(HttpMethod.GET, "/api/danh-muc/lua-chon").hasAnyRole("ADMIN", "MANAGER", "EMPLOYEE")
+                        .requestMatchers("/api/danh-muc/**").hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers(HttpMethod.GET, "/api/nha-cung-cap/**")
                         .hasAnyRole("ADMIN", "MANAGER", "EMPLOYEE")
-                        .requestMatchers(HttpMethod.GET, "/api/phieu-nhap/**")
+                        .requestMatchers(HttpMethod.GET, "/api/phieu-nhap/**", "/api/phieu-xuat")
                         .hasAnyRole("ADMIN", "MANAGER", "EMPLOYEE")
-                        .requestMatchers(HttpMethod.PATCH, "/api/phieu-nhap/**")
+                        .requestMatchers(HttpMethod.PATCH, "/api/phieu-nhap/**", "/api/phieu-xuat/*/trang-thai")
                         .hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers(HttpMethod.POST, "/api/tai-khoan/nhan-vien").hasRole("MANAGER")
                         .requestMatchers("/api/tai-khoan/**").hasRole("ADMIN")
                         .requestMatchers("/api/thong-ke/**").hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers("/api/nhan-vien/**").hasRole("MANAGER")
+                        .requestMatchers(HttpMethod.GET, "/api/khach-hang/lua-chon").hasAnyRole("MANAGER", "EMPLOYEE")
                         .requestMatchers("/api/nha-cung-cap/**", "/api/khach-hang/**").hasRole("MANAGER")
                         .requestMatchers("/api/hang-hoa/**").hasAnyRole("ADMIN", "MANAGER", "EMPLOYEE")
                         .requestMatchers(HttpMethod.POST, "/api/phieu-nhap/**", "/api/phieu-xuat/**").hasRole("EMPLOYEE")

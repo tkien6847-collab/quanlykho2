@@ -13,9 +13,10 @@ export interface LoginResponse extends AuthUser {
 
 export type PageId =
   | "dashboard"
+  | "profile"
   | "accounts"
+  | "categories"
   | "employees"
-  | "employee-accounts"
   | "inventory"
   | "stock-search"
   | "partners"
@@ -38,6 +39,17 @@ export interface Account {
   trangThai: string;
   maVaiTro: number;
   maNV: number;
+  hoTen: string;
+  tenVaiTro: string;
+}
+
+export interface PersonalProfile {
+  hoTen: string;
+  gioiTinh: string | null;
+  ngaySinh: string | null;
+  soDienThoai: string | null;
+  email: string | null;
+  diaChi: string | null;
 }
 
 export interface Product {
@@ -57,35 +69,45 @@ export interface Product {
 export interface Category {
   maDM: number;
   tenDM: string;
-  moTa?: string;
+  moTa: string | null;
+  soMatHang: number;
+  trangThai: ActivityStatus;
 }
 
+export type CategoryOption = Pick<Category, "maDM" | "tenDM">;
+
+export type ActivityStatus = "Hoạt động" | "Ngừng hoạt động";
+
 export interface Supplier {
-  maNCC?: number;
+  maNCC: number;
   maNccCode?: string;
   tenNCC: string;
   soDienThoai: string;
   email: string;
   diaChi: string;
+  trangThai: ActivityStatus;
 }
 
 export interface Customer {
-  maKH?: number;
+  maKH: number;
   hoTen: string;
   soDienThoai: string;
   email: string;
   diaChi: string;
+  trangThai: ActivityStatus;
 }
 
 export interface Employee {
-  maNV?: number;
+  maNV: number;
   hoTen: string;
-  gioiTinh: string;
-  ngaySinh: string;
-  soDienThoai: string;
-  email: string;
-  diaChi: string;
+  gioiTinh: string | null;
+  ngaySinh: string | null;
+  soDienThoai: string | null;
+  email: string | null;
+  diaChi: string | null;
   chucVu: string;
+  tenDangNhap: string | null;
+  trangThai: ActivityStatus | null;
 }
 
 export interface InventoryDocument {
@@ -127,4 +149,5 @@ export interface WarehouseReport {
   soLuongXuatTrongNgay: number;
   soLuongNhapTrongThang: number;
   soLuongXuatTrongThang: number;
+  soPhieuChoDuyet: number;
 }

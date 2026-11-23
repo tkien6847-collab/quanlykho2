@@ -14,11 +14,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.UUID;
-import java.util.concurrent.ThreadLocalRandom;
 
 @Service
 public class TaiKhoanService {
@@ -46,21 +43,21 @@ public class TaiKhoanService {
     @Transactional
     public TaiKhoanResponse taoTaiKhoanQuanLy(TaoTaiKhoanQuanLyRequest request) {
         validateCredentials(request == null ? null : request.tenDangNhap(), request == null ? null : request.matKhau());
-        return createAccount(request.tenDangNhap(), request.matKhau(), "Quản lý", "Quản lý", "manager");
+        return createAccount(request.tenDangNhap(), request.matKhau(), request.hoTen(), "Quản lý", null);
     }
 
     @Transactional
     public TaiKhoanResponse taoTaiKhoanNhanVien(TaoTaiKhoanNhanVienRequest request) {
         validateCredentials(request == null ? null : request.tenDangNhap(), request == null ? null : request.matKhau());
-        return createAccount(request.tenDangNhap(), request.matKhau(), "Nhân viên", "Nhân viên", "employee");
+        return createAccount(request.tenDangNhap(), request.matKhau(), request.hoTen(), "Nhân viên", request.maNV());
     }
 
     private TaiKhoanResponse createAccount(
             String username,
             String rawPassword,
+            String fullName,
             String roleName,
-            String jobTitle,
-            String profileSlug
+            Integer existingEmployeeId
     ) {
         if (taiKhoanRepository.existsByTenDangNhap(username)) {
             throw new IllegalArgumentException("Tên đăng nhập đã tồn tại.");
@@ -70,28 +67,41 @@ public class TaiKhoanService {
                 .orElseGet(() -> {
                     VaiTro newRole = new VaiTro();
                     newRole.setTenVaiTro(roleName);
-                    newRole.setMoTa(jobTitle + " hệ thống");
+                    newRole.setMoTa(roleName + " hệ thống");
                     return vaiTroRepository.save(newRole);
                 });
 
-        NhanVien nhanVien = new NhanVien();
-        nhanVien.setHoTen((jobTitle + " - " + username)
-                .substring(0, Math.min(50, jobTitle.length() + 3 + username.length())));
-        nhanVien.setGioiTinh("Khác");
-        nhanVien.setNgaySinh(LocalDate.of(2000, 1, 1));
-        nhanVien.setChucVu(jobTitle);
-        nhanVien.setDiaChi("Chưa cập nhật");
-        nhanVien.setSoDienThoai(generatedPhoneNumber());
-        nhanVien.setEmail(profileSlug + "-" + UUID.randomUUID() + "@qlykho.local");
-        nhanVien = nhanVienRepository.save(nhanVien);
+        Integer maNV = findOrCreateEmployeeId(existingEmployeeId, fullName, roleName);
 
         TaiKhoan account = new TaiKhoan();
         account.setTenDangNhap(username);
         account.setMatKhau(passwordEncoder.encode(rawPassword));
-        account.setTrangThai("Hoạt động");
+        account.setTrangThai(TaiKhoan.HOAT_DONG);
         account.setMaVaiTro(role.getMaVaiTro());
-        account.setMaNV(nhanVien.getMaNV());
+        account.setMaNV(maNV);
         return toResponse(taiKhoanRepository.save(account));
+    }
+
+    private Integer findOrCreateEmployeeId(Integer existingId, String fullName, String roleName) {
+        if (existingId != null) {
+            NhanVien employee = nhanVienRepository.findById(existingId)
+                    .orElseThrow(() -> new NoSuchElementException("Không tìm thấy hồ sơ nhân viên."));
+            if (ThongTinNhanVienText.laChucVuQuanLy(employee.getChucVu())) {
+                throw new IllegalArgumentException("Chỉ có thể gắn tài khoản vào hồ sơ nhân viên.");
+            }
+            if (taiKhoanRepository.existsByMaNV(existingId)) {
+                throw new IllegalArgumentException("Hồ sơ nhân viên này đã có tài khoản.");
+            }
+            return existingId;
+        }
+        String employeeName = fullName == null ? "" : fullName.strip();
+        if (employeeName.length() > 50) {
+            throw new IllegalArgumentException("Họ tên không được vượt quá 50 ký tự.");
+        }
+        NhanVien employee = new NhanVien();
+        employee.setHoTen(employeeName);
+        employee.setChucVu(roleName);
+        return nhanVienRepository.save(employee).getMaNV();
     }
 
     private void validateCredentials(String username, String rawPassword) {
@@ -145,14 +155,29 @@ public class TaiKhoanService {
         return toResponse(taiKhoanRepository.save(taiKhoan));
     }
 
+    @Transactional
     public TaiKhoanResponse capNhatVaiTro(Integer maTK, Integer maVaiTro) {
         if (maVaiTro == null || !vaiTroRepository.existsById(maVaiTro)) {
             throw new IllegalArgumentException("Vai trò không tồn tại.");
         }
-        TaiKhoan taiKhoan = taiKhoanRepository.findById(maTK)
+        TaiKhoan taiKhoan = taiKhoanRepository.findByMaTKForUpdate(maTK)
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy tài khoản."));
         taiKhoan.setMaVaiTro(maVaiTro);
         return toResponse(taiKhoanRepository.save(taiKhoan));
+    }
+
+    @Transactional
+    public TaiKhoanResponse capNhatTrangThai(Integer maTK, String trangThai, String currentUsername) {
+        if (!TaiKhoan.trangThaiHopLe(trangThai)) {
+            throw new IllegalArgumentException("Trạng thái không hợp lệ.");
+        }
+        TaiKhoan account = taiKhoanRepository.findByMaTKForUpdate(maTK)
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy tài khoản."));
+        if (account.getTenDangNhap().equals(currentUsername) && TaiKhoan.NGUNG_HOAT_DONG.equals(trangThai)) {
+            throw new IllegalArgumentException("Không thể ngừng hoạt động tài khoản đang đăng nhập.");
+        }
+        account.setTrangThai(trangThai);
+        return toResponse(taiKhoanRepository.save(account));
     }
 
     public void xoaTaiKhoan(Integer maTK) {
@@ -163,12 +188,16 @@ public class TaiKhoanService {
     }
 
     private TaiKhoanResponse toResponse(TaiKhoan taiKhoan) {
+        NhanVien employee = nhanVienRepository.findById(taiKhoan.getMaNV()).orElse(null);
+        String roleName = vaiTroRepository.findById(taiKhoan.getMaVaiTro()).map(VaiTro::getTenVaiTro).orElse("");
         return new TaiKhoanResponse(
                 taiKhoan.getMaTK(),
                 taiKhoan.getTenDangNhap(),
                 taiKhoan.getTrangThai(),
                 taiKhoan.getMaVaiTro(),
-                taiKhoan.getMaNV()
+                taiKhoan.getMaNV(),
+                employee == null ? "" : ThongTinNhanVienText.hoTenHienThi(employee.getHoTen(), taiKhoan.getTenDangNhap()),
+                roleName
         );
     }
 
@@ -176,11 +205,4 @@ public class TaiKhoanService {
         return value == null || value.isBlank();
     }
 
-    private String generatedPhoneNumber() {
-        String phoneNumber;
-        do {
-            phoneNumber = "0" + ThreadLocalRandom.current().nextInt(100_000_000, 1_000_000_000);
-        } while (nhanVienRepository.existsBySoDienThoai(phoneNumber));
-        return phoneNumber;
-    }
 }

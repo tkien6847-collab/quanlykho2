@@ -12,18 +12,20 @@ const navigationByRole: Record<Role, NavigationItem[]> = {
   admin: [
     { id: "dashboard", label: "Tổng quan", icon: "▦", group: "TỔNG QUAN" },
     { id: "accounts", label: "Quản lý tài khoản", icon: "♙", group: "QUẢN TRỊ" },
+    { id: "categories", label: "Quản lý danh mục", icon: "▤", group: "QUẢN TRỊ" },
     { id: "reports", label: "Thống kê & báo cáo", icon: "▤", group: "QUẢN TRỊ" },
     { id: "approve-inbound", label: "Duyệt phiếu nhập", icon: "↓", group: "QUẢN TRỊ" },
+    { id: "approve-outbound", label: "Duyệt phiếu xuất", icon: "↑", group: "QUẢN TRỊ" },
   ],
   manager: [
     { id: "dashboard", label: "Tổng quan", icon: "▦", group: "TỔNG QUAN" },
     { id: "reports", label: "Thống kê & báo cáo", icon: "▤", group: "KHO HÀNG" },
     { id: "partners", label: "NCC / Khách hàng", icon: "♧", group: "KHO HÀNG" },
     { id: "employees", label: "Quản lý nhân viên", icon: "♙", group: "KHO HÀNG" },
-    { id: "employee-accounts", label: "Tạo tài khoản nhân viên", icon: "＋", group: "KHO HÀNG" },
     { id: "approve-inbound", label: "Duyệt phiếu nhập", icon: "↓", group: "KHO HÀNG" },
     { id: "approve-outbound", label: "Duyệt phiếu xuất", icon: "↑", group: "KHO HÀNG" },
     { id: "inventory", label: "Quản lý hàng hóa", icon: "▣", group: "KHO HÀNG" },
+    { id: "categories", label: "Quản lý danh mục", icon: "▤", group: "KHO HÀNG" },
     { id: "stock-search", label: "Tra cứu tồn kho", icon: "⌕", group: "KHO HÀNG" },
   ],
   employee: [

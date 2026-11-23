@@ -1,5 +1,6 @@
 package com.qlykho.security;
 
+import com.qlykho.entity.TaiKhoan;
 import com.qlykho.repository.TaiKhoanRepository;
 import com.qlykho.repository.VaiTroRepository;
 import com.qlykho.service.JwtService;
@@ -16,8 +17,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
-import java.text.Normalizer;
-import java.util.Locale;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
@@ -49,12 +48,12 @@ private String secretKey;
             if (jwtService.isValid(token)) {
                 String username = jwtService.extractUsername(token);
                 taiKhoanRepository.findByTenDangNhap(username)
-                        .filter(account -> isActive(account.getTrangThai()))
+                        .filter(TaiKhoan::dangHoatDong)
                         .flatMap(account -> vaiTroRepository.findById(account.getMaVaiTro())
                                 .map(role -> new UsernamePasswordAuthenticationToken(
                                         username,
                                         null,
-                                        java.util.List.of(new SimpleGrantedAuthority(authority(role.getTenVaiTro())))
+                                        java.util.List.of(new SimpleGrantedAuthority("ROLE_" + AccountRole.fromName(role.getTenVaiTro()).name()))
                                 )))
                         .ifPresent(SecurityContextHolder.getContext()::setAuthentication);
             }
@@ -62,23 +61,4 @@ private String secretKey;
         filterChain.doFilter(request, response);
     }
 
-    private boolean isActive(String status) {
-        if (status == null) return false;
-        String normalized = status.trim().toLowerCase(Locale.ROOT);
-        return normalized.equals("hoạt động")
-                || normalized.equals("dang hoat dong")
-                || normalized.equals("đang hoạt động")
-                || normalized.equals("active")
-                || normalized.equals("enabled");
-    }
-
-    private String authority(String roleName) {
-        String normalized = Normalizer.normalize(roleName, Normalizer.Form.NFD)
-                .replaceAll("\\p{M}", "")
-                .toLowerCase(Locale.ROOT);
-        if (normalized.contains("admin") || normalized.contains("quan tri")) return "ROLE_ADMIN";
-        if (normalized.contains("manager") || normalized.contains("quan ly")) return "ROLE_MANAGER";
-        if (normalized.contains("employee") || normalized.contains("nhan vien")) return "ROLE_EMPLOYEE";
-        return "ROLE_UNKNOWN";
-    }
 }

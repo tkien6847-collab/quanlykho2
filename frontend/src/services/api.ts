@@ -1,4 +1,4 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8080";
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? "http://localhost:8081";
 
 export class ApiError extends Error {
   constructor(message: string, public readonly status: number) {
@@ -24,21 +24,19 @@ export async function apiRequest<T>(path: string, init?: RequestInit): Promise<T
   }
 
   if (!response.ok) {
+    const problem = (await response.json().catch(() => null)) as { message?: string } | null;
+    const message = typeof problem?.message === "string" ? problem.message : "";
+    if (message) throw new ApiError(message, response.status);
+    if (response.status === 401 && path === "/api/auth/login") {
+      throw new ApiError("Tên đăng nhập hoặc mật khẩu không đúng.", response.status);
+    }
     if (response.status === 401) {
-      if (path === "/api/auth/login") {
-        throw new ApiError("Tên đăng nhập hoặc mật khẩu không đúng.", response.status);
-      }
-      throw new ApiError("Phiên đăng nhập đã hết hạn hoặc không hợp lệ. Vui lòng đăng nhập lại.", response.status);
+      throw new ApiError("Phiên đăng nhập không còn hợp lệ. Vui lòng đăng nhập lại.", response.status);
     }
-    const body = await response.text();
-    let message = body;
-    try {
-      const parsed = JSON.parse(body) as { message?: string };
-      message = parsed.message ?? body;
-    } catch {
-      message = body;
+    if (response.status === 403) {
+      throw new ApiError("Tài khoản không có quyền thực hiện thao tác này.", response.status);
     }
-    throw new ApiError(message || `Yêu cầu thất bại (${response.status}).`, response.status);
+    throw new ApiError(`Yêu cầu thất bại (${response.status}).`, response.status);
   }
 
   if (response.status === 204) return undefined as T;

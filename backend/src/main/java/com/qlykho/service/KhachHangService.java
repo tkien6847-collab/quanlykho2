@@ -1,12 +1,15 @@
 package com.qlykho.service;
 
+import com.qlykho.dto.KhachHangLuaChon;
 import com.qlykho.entity.KhachHang;
 import com.qlykho.repository.KhachHangRepository;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.NoSuchElementException;
 
 @Service
 public class KhachHangService {
@@ -19,6 +22,12 @@ public class KhachHangService {
     //ví dụ về hàm lấy danh sách 
     public List<KhachHang> layDanhSachKhachhang(){
         return khachHangRepository.findAll();
+    }
+
+    public List<KhachHangLuaChon> layLuaChonKhachHang() {
+        return khachHangRepository.findAllByTrangThaiOrderByHoTenAscMaKHAsc(KhachHang.HOAT_DONG).stream()
+                .map(customer -> new KhachHangLuaChon(customer.getMaKH(), customer.getHoTen()))
+                .toList();
     }
     
     //ví dụ hàm thêm thông tin 
@@ -39,6 +48,17 @@ public class KhachHangService {
 "Không thể thêm khách hàng: email hoặc số điện thoại đã tồn tại, hoặc dữ liệu không hợp lệ.", e);
         }
       }
+
+    @Transactional
+    public KhachHang capNhatTrangThai(Integer maKH, String trangThai) {
+        if (!KhachHang.HOAT_DONG.equals(trangThai) && !KhachHang.NGUNG_HOAT_DONG.equals(trangThai)) {
+            throw new IllegalArgumentException("Trạng thái khách hàng không hợp lệ.");
+        }
+        KhachHang customer = khachHangRepository.findById(maKH)
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy khách hàng."));
+        customer.setTrangThai(trangThai);
+        return customer;
+    }
     
    // ví dụ hàm xóa
     public void xoaKhachHang(Integer maKH) {

@@ -5,4 +5,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PhieuNhapRepository extends JpaRepository<PhieuNhap, Integer> {
     boolean existsByMaNV(Integer maNV);
+
+    long countByTrangThaiIgnoreCase(String trangThai);
 }

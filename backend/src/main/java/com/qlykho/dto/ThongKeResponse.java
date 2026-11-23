@@ -8,6 +8,7 @@ public record ThongKeResponse(
         Long soLuongNhapTrongNgay,
         Long soLuongXuatTrongNgay,
         Long soLuongNhapTrongThang,
-        Long soLuongXuatTrongThang
+        Long soLuongXuatTrongThang,
+        long soPhieuChoDuyet
 ) {
 }

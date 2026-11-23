@@ -40,7 +40,19 @@ public class NhaCungCapService {
                 .max()
                 .orElse(0) + 1;
         nhaCungCap.setMaNccCode(prefix + String.format(java.util.Locale.ROOT, "%02d", nextSequence));
+        nhaCungCap.setTrangThai(NhaCungCap.HOAT_DONG);
         return nhaCungCapRepository.save(nhaCungCap);
+    }
+
+    @Transactional
+    public NhaCungCap capNhatTrangThai(Integer maNCC, String trangThai) {
+        if (!NhaCungCap.HOAT_DONG.equals(trangThai) && !NhaCungCap.NGUNG_HOAT_DONG.equals(trangThai)) {
+            throw new IllegalArgumentException("Trạng thái nhà cung cấp không hợp lệ.");
+        }
+        NhaCungCap nhaCungCap = nhaCungCapRepository.findById(maNCC)
+                .orElseThrow(() -> new NoSuchElementException("Không tìm thấy nhà cung cấp."));
+        nhaCungCap.setTrangThai(trangThai);
+        return nhaCungCap;
     }
 
     public void xoaNhaCungCap(Integer maNCC) {

@@ -19,19 +19,19 @@ public class NhanVien {
     @Column(name = "HoTen", nullable = false, length = 50)
     private String hoTen;
 
-    @Column(name = "GioiTinh", nullable = false, length = 10)
+    @Column(name = "GioiTinh", length = 10)
     private String gioiTinh;
 
-    @Column(name = "NgaySinh", nullable = false)
+    @Column(name = "NgaySinh")
     private LocalDate ngaySinh;
 
-    @Column(name = "SoDienThoai", nullable = false, unique = true, length = 20)
+    @Column(name = "SoDienThoai", unique = true, length = 20)
     private String soDienThoai;
 
-    @Column(name = "Email", nullable = false, unique = true, length = 100)
+    @Column(name = "Email", unique = true, length = 100)
     private String email;
 
-    @Column(name = "DiaChi", nullable = false, length = 200)
+    @Column(name = "DiaChi", length = 200)
     private String diaChi;
 
     @Column(name = "ChucVu", nullable = false, length = 50)

@@ -1,5 +1,6 @@
 package com.qlykho.service;
 
+import com.qlykho.entity.DanhMuc;
 import com.qlykho.entity.HangHoa;
 import com.qlykho.repository.DanhMucRepository;
 import com.qlykho.repository.HangHoaRepository;
@@ -8,6 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 import java.time.LocalDate;
 
 @Service
@@ -61,7 +63,7 @@ public class HangHoaService {
 
     @Transactional
     public HangHoa themHangHoa(HangHoa hangHoa) {
-        resolveCategory(hangHoa);
+        resolveCategory(hangHoa, null);
         hangHoa.setMaHH(null);
         hangHoa.setMaSku(generateDailyCode("SP", hangHoaRepository.findAllByMaSkuStartingWith(codePrefix("SP"))));
         hangHoa.setSoLuongTon(0);
@@ -75,7 +77,7 @@ public class HangHoaService {
         HangHoa hangHoa = hangHoaRepository.findById(maHH)
                 .orElseThrow(() -> new NoSuchElementException("Không tìm thấy hàng hóa."));
         if (thongTinMoi != null) {
-            resolveCategory(thongTinMoi);
+            resolveCategory(thongTinMoi, hangHoa.getMaDM());
             thongTinMoi.setMaHH(maHH);
             thongTinMoi.setMaSku(hangHoa.getMaSku());
         }
@@ -91,21 +93,30 @@ public class HangHoaService {
         hangHoaRepository.deleteById(maHH);
     }
 
-    private void resolveCategory(HangHoa hangHoa) {
-        if (hangHoa == null || isBlank(hangHoa.getTenDM())) {
+    private void resolveCategory(HangHoa hangHoa, Integer currentCategoryId) {
+        if (hangHoa == null) {
             return;
         }
-        String categoryName = hangHoa.getTenDM().trim();
-        if (categoryName.length() > 100) {
-            throw new IllegalArgumentException("Tên danh mục không được vượt quá 100 ký tự.");
+
+        DanhMuc category;
+        if (isBlank(hangHoa.getTenDM())) {
+            if (hangHoa.getMaDM() == null) {
+                return;
+            }
+            category = danhMucRepository.findById(hangHoa.getMaDM())
+                    .orElseThrow(() -> new IllegalArgumentException("Danh mục không tồn tại."));
+        } else {
+            String categoryName = hangHoa.getTenDM().trim();
+            if (categoryName.length() > 100) {
+                throw new IllegalArgumentException("Tên danh mục không được vượt quá 100 ký tự.");
+            }
+            category = danhMucRepository.findFirstByTenDMIgnoreCase(categoryName)
+                    .orElseThrow(() -> new IllegalArgumentException("Danh mục không tồn tại. Vui lòng chọn danh mục đã được tạo."));
         }
 
-        var category = danhMucRepository.findFirstByTenDMIgnoreCase(categoryName)
-                .orElseGet(() -> {
-                    var newCategory = new com.qlykho.entity.DanhMuc();
-                    newCategory.setTenDM(categoryName);
-                    return danhMucRepository.save(newCategory);
-                });
+        if (!DanhMuc.HOAT_DONG.equals(category.getTrangThai()) && !Objects.equals(category.getMaDM(), currentCategoryId)) {
+            throw new IllegalArgumentException("Danh mục đã ngừng hoạt động. Vui lòng chọn danh mục đang hoạt động.");
+        }
         hangHoa.setMaDM(category.getMaDM());
         hangHoa.setTenDM(category.getTenDM());
     }
@@ -121,9 +132,6 @@ public class HangHoaService {
                 || hangHoa.getSoLuongTon() < 0
                 || hangHoa.getMaDM() == null) {
             throw new IllegalArgumentException("Thông tin hàng hóa không hợp lệ.");
-        }
-        if (!danhMucRepository.existsById(hangHoa.getMaDM())) {
-            throw new IllegalArgumentException("Danh mục không tồn tại.");
         }
         String location = hangHoa.getViTriKe();
         if (!isBlank(location)) {

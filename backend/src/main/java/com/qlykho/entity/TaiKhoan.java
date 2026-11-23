@@ -7,9 +7,14 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
+import java.util.Locale;
+
 @Entity
 @Table(name = "TAIKHOAN")
 public class TaiKhoan {
+    public static final String HOAT_DONG = "Hoạt động";
+    public static final String NGUNG_HOAT_DONG = "Ngừng hoạt động";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "MaTK")
@@ -45,4 +50,16 @@ public class TaiKhoan {
     public void setMaVaiTro(Integer maVaiTro) { this.maVaiTro = maVaiTro; }
     public Integer getMaNV() { return maNV; }
     public void setMaNV(Integer maNV) { this.maNV = maNV; }
+
+    public boolean dangHoatDong() {
+        if (trangThai == null) return false;
+        return switch (trangThai.trim().toLowerCase(Locale.ROOT)) {
+            case "hoạt động", "dang hoat dong", "đang hoạt động", "active", "enabled" -> true;
+            default -> false;
+        };
+    }
+
+    public static boolean trangThaiHopLe(String trangThai) {
+        return HOAT_DONG.equals(trangThai) || NGUNG_HOAT_DONG.equals(trangThai);
+    }
 }

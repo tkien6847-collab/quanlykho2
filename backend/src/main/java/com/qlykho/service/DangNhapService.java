@@ -39,7 +39,7 @@ public class DangNhapService {
         if (!passwordEncoder.matches(request.matKhau(), taiKhoan.getMatKhau())) {
             throw new BadCredentialsException("Tên đăng nhập hoặc mật khẩu không chính xác.");
         }
-        if (!isActive(taiKhoan.getTrangThai())) {
+        if (!taiKhoan.dangHoatDong()) {
             throw new BadCredentialsException("Tài khoản hiện không hoạt động.");
         }
 
@@ -57,7 +57,7 @@ public class DangNhapService {
     public TaiKhoanIdentityResponse layDanhTinh(String username) {
         TaiKhoan account = taiKhoanRepository.findByTenDangNhap(username)
                 .orElseThrow(() -> new BadCredentialsException("Tài khoản không còn tồn tại."));
-        if (!isActive(account.getTrangThai())) {
+        if (!account.dangHoatDong()) {
             throw new BadCredentialsException("Tài khoản hiện không hoạt động.");
         }
         VaiTro role = vaiTroRepository.findById(account.getMaVaiTro())
@@ -70,13 +70,4 @@ public class DangNhapService {
         );
     }
 
-    private boolean isActive(String status) {
-        if (status == null) return false;
-        String normalized = status.trim().toLowerCase(java.util.Locale.ROOT);
-        return normalized.equals("hoạt động")
-                || normalized.equals("dang hoat dong")
-                || normalized.equals("đang hoạt động")
-                || normalized.equals("active")
-                || normalized.equals("enabled");
-    }
 }

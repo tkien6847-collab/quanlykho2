@@ -1,11 +1,13 @@
 package com.qlykho.controller;
 
+import com.qlykho.dto.CapNhatTrangThaiRequest;
 import com.qlykho.entity.NhaCungCap;
 import com.qlykho.service.NhaCungCapService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -31,6 +33,14 @@ public class NhaCungCapController {
     @PostMapping
     public ResponseEntity<NhaCungCap> themNhaCungCap(@RequestBody NhaCungCap nhaCungCap) {
         return ResponseEntity.status(HttpStatus.CREATED).body(nhaCungCapService.themNhaCungCap(nhaCungCap));
+    }
+
+    @PatchMapping("/{maNCC}/trang-thai")
+    public NhaCungCap capNhatTrangThai(
+            @PathVariable("maNCC") Integer maNCC,
+            @RequestBody CapNhatTrangThaiRequest request
+    ) {
+        return nhaCungCapService.capNhatTrangThai(maNCC, request.trangThai());
     }
 
     @DeleteMapping("/{maNCC}")

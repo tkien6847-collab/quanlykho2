@@ -4,6 +4,7 @@ import com.qlykho.dto.ChiTietPhieuNhapRequest;
 import com.qlykho.dto.TaoPhieuNhapRequest;
 import com.qlykho.entity.ChiTietPhieuNhap;
 import com.qlykho.entity.ChiTietPhieuNhapId;
+import com.qlykho.entity.NhaCungCap;
 import com.qlykho.entity.PhieuNhap;
 import com.qlykho.repository.ChiTietPhieuNhapRepository;
 import com.qlykho.repository.HangHoaRepository;
@@ -104,9 +105,13 @@ public class PhieuNhapService {
                 || request.chiTiet().isEmpty()) {
             throw new IllegalArgumentException("Thông tin phiếu nhập không hợp lệ.");
         }
-        if (!nhanVienRepository.existsById(request.maNV())
-                || !nhaCungCapRepository.existsById(request.maNCC())) {
-            throw new IllegalArgumentException("Nhân viên hoặc nhà cung cấp không tồn tại.");
+        if (!nhanVienRepository.existsById(request.maNV())) {
+            throw new IllegalArgumentException("Nhân viên không tồn tại.");
+        }
+        NhaCungCap supplier = nhaCungCapRepository.findById(request.maNCC())
+                .orElseThrow(() -> new IllegalArgumentException("Nhà cung cấp không tồn tại."));
+        if (!NhaCungCap.HOAT_DONG.equals(supplier.getTrangThai())) {
+            throw new IllegalArgumentException("Nhà cung cấp đã ngừng hoạt động.");
         }
 
         Set<Integer> productIds = new HashSet<>();

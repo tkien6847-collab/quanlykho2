@@ -6,10 +6,14 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import org.hibernate.annotations.ColumnDefault;
 
 @Entity
 @Table(name = "NHACUNGCAP")
 public class NhaCungCap {
+    public static final String HOAT_DONG = "Hoạt động";
+    public static final String NGUNG_HOAT_DONG = "Ngừng hoạt động";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "MaNCC")
@@ -30,6 +34,10 @@ public class NhaCungCap {
     @Column(name = "DiaChi", nullable = false, length = 200)
     private String diaChi;
 
+    @Column(name = "TrangThai", nullable = false, length = 20)
+    @ColumnDefault("'" + HOAT_DONG + "'")
+    private String trangThai = HOAT_DONG;
+
     public NhaCungCap() {
     }
 
@@ -45,4 +53,6 @@ public class NhaCungCap {
     public void setEmail(String email) { this.email = email; }
     public String getDiaChi() { return diaChi; }
     public void setDiaChi(String diaChi) { this.diaChi = diaChi; }
+    public String getTrangThai() { return trangThai; }
+    public void setTrangThai(String trangThai) { this.trangThai = trangThai; }
 }

@@ -5,6 +5,8 @@ public record TaiKhoanResponse(
         String tenDangNhap,
         String trangThai,
         Integer maVaiTro,
-        Integer maNV
+        Integer maNV,
+        String hoTen,
+        String tenVaiTro
 ) {
 }

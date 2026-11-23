@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
-import Footer from "./refregent/Footer";
-import Header from "./refregent/Header";
-import Sidebar, { getNavigation } from "./refregent/Sidebar";
+import Footer from "./layout/Footer";
+import Header from "./layout/Header";
+import Sidebar, { getNavigation } from "./layout/Sidebar";
 import LoginPage from "./components/LoginPage";
 import Workspace from "./components/Workspace";
 import { apiRequest } from "./services/api";
@@ -76,7 +76,7 @@ export default function App() {
 
   const allowedPages = getNavigation(role).map((item) => item.id);
   const navigate = (nextPage: PageId) => {
-    if (allowedPages.includes(nextPage)) setPage(nextPage);
+    if (nextPage === "profile" || allowedPages.includes(nextPage)) setPage(nextPage);
   };
 
   return (
@@ -92,6 +92,7 @@ export default function App() {
         <Header
           role={role}
           username={user.tenDangNhap}
+          onProfileClick={() => navigate("profile")}
           onLogout={logout}
           onMenuClick={() => setSidebarOpen(true)}
         />
