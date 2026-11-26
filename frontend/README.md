@@ -6,7 +6,7 @@
 
 1. Cài Node.js LTS.
 2. Tại thư mục `frontend`, chạy `npm install`.
-3. Sao chép `.env.example` thành `.env` nếu backend không chạy tại `http://localhost:8080`, sau đó cập nhật `VITE_API_BASE_URL`.
+3. Sao chép `.env.example` thành `.env` nếu cần gọi backend ở một origin khác, sau đó cập nhật `VITE_API_BASE_URL`. Để trống biến này nếu frontend và API dùng cùng domain (ví dụ chia sẻ qua ngrok).
 4. Chạy `npm run dev` và mở địa chỉ Vite hiển thị trong terminal.
 
 Chạy `npm run build` để kiểm tra TypeScript và tạo bản production trong `dist`.

@@ -17,9 +17,6 @@ public class HangHoa {
     @Column(name = "MaHH")
     private Integer maHH;
 
-    @Column(name = "MaSKU", unique = true, length = 20)
-    private String maSku;
-
     @Column(name = "TenHH", nullable = false, length = 100)
     private String tenHH;
 
@@ -52,8 +49,6 @@ public class HangHoa {
 
     public Integer getMaHH() { return maHH; }
     public void setMaHH(Integer maHH) { this.maHH = maHH; }
-    public String getMaSku() { return maSku; }
-    public void setMaSku(String maSku) { this.maSku = maSku; }
     public String getTenHH() { return tenHH; }
     public void setTenHH(String tenHH) { this.tenHH = tenHH; }
     public String getDonViTinh() { return donViTinh; }

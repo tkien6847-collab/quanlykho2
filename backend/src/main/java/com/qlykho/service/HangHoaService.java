@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Objects;
-import java.time.LocalDate;
 
 @Service
 public class HangHoaService {
@@ -65,7 +64,6 @@ public class HangHoaService {
     public HangHoa themHangHoa(HangHoa hangHoa) {
         resolveCategory(hangHoa, null);
         hangHoa.setMaHH(null);
-        hangHoa.setMaSku(generateDailyCode("SP", hangHoaRepository.findAllByMaSkuStartingWith(codePrefix("SP"))));
         hangHoa.setSoLuongTon(0);
         hangHoa.setTrangThai("Hoạt động");
         validate(hangHoa);
@@ -79,7 +77,6 @@ public class HangHoaService {
         if (thongTinMoi != null) {
             resolveCategory(thongTinMoi, hangHoa.getMaDM());
             thongTinMoi.setMaHH(maHH);
-            thongTinMoi.setMaSku(hangHoa.getMaSku());
         }
         validate(thongTinMoi);
         return hangHoaRepository.save(thongTinMoi);
@@ -164,18 +161,4 @@ public class HangHoaService {
         return value == null || value.isBlank();
     }
 
-    private String codePrefix(String prefix) {
-        return prefix + "-" + LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("ddMMyyyy")) + "-";
-    }
-
-    private String generateDailyCode(String prefix, List<HangHoa> products) {
-        String codePrefix = codePrefix(prefix);
-        int nextSequence = products.stream()
-                .map(HangHoa::getMaSku)
-                .map(code -> code.substring(codePrefix.length()))
-                .mapToInt(Integer::parseInt)
-                .max()
-                .orElse(0) + 1;
-        return codePrefix + String.format(java.util.Locale.ROOT, "%02d", nextSequence);
-    }
 }

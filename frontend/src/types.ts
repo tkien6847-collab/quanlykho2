@@ -1,4 +1,4 @@
-export type Role = "admin" | "manager" | "employee";
+﻿export type Role = "admin" | "manager" | "employee";
 
 export interface AuthUser {
   tenDangNhap: string;
@@ -24,7 +24,9 @@ export type PageId =
   | "inbound"
   | "outbound"
   | "approve-inbound"
-  | "approve-outbound";
+  | "approve-outbound"
+  | "manage-inout"
+  | "storage";
 
 export interface NavigationItem {
   id: PageId;
@@ -54,7 +56,6 @@ export interface PersonalProfile {
 
 export interface Product {
   maHH?: number;
-  maSku?: string;
   tenHH: string;
   donViTinh: string;
   donGia: number;
@@ -76,7 +77,7 @@ export interface Category {
 
 export type CategoryOption = Pick<Category, "maDM" | "tenDM">;
 
-export type ActivityStatus = "Hoạt động" | "Ngừng hoạt động";
+export type ActivityStatus = string;
 
 export interface Supplier {
   maNCC: number;
@@ -151,3 +152,27 @@ export interface WarehouseReport {
   soLuongXuatTrongThang: number;
   soPhieuChoDuyet: number;
 }
+
+export interface ReportFilterResult {
+  tuNgay: string;
+  denNgay: string;
+  soLuongNhap: number;
+  soLuongXuat: number;
+  theoDanhMuc: { maDM: number; tenDM: string; soLuongNhap: number; soLuongXuat: number }[];
+}
+
+export interface ReportChart {
+  cheDo: string;
+  moc: { ngay: string; nhan: string; soLuongNhap: number; soLuongXuat: number; tonKhoLuyKe: number }[];
+}
+
+export interface StorageSlot {
+  maViTri: number;
+  maViTriCode: string;
+  khuVuc: string;
+  maKe: string;
+  tang: number;
+  viTriO: number;
+  sucChua: number;
+}
+

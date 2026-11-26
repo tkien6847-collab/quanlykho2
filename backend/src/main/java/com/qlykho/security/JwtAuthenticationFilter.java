@@ -14,6 +14,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
+import org.springframework.http.HttpMethod;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
@@ -34,6 +35,12 @@ private String secretKey;
         this.jwtService = jwtService;
         this.taiKhoanRepository = taiKhoanRepository;
         this.vaiTroRepository = vaiTroRepository;
+    }
+
+    @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        return HttpMethod.POST.matches(request.getMethod())
+                && "/api/auth/login".equals(request.getServletPath());
     }
 
     @Override

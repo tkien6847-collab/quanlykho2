@@ -63,6 +63,10 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/tai-khoan/nhan-vien").hasRole("MANAGER")
                         .requestMatchers("/api/tai-khoan/**").hasRole("ADMIN")
                         .requestMatchers("/api/thong-ke/**").hasAnyRole("ADMIN", "MANAGER")
+                        .requestMatchers(HttpMethod.GET, "/api/vi-tri-kho", "/api/vi-tri-kho/**").hasAnyRole("ADMIN", "MANAGER", "EMPLOYEE")
+                        .requestMatchers(HttpMethod.POST, "/api/vi-tri-kho/day-ke").hasAnyRole("ADMIN", "MANAGER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/vi-tri-kho/**").hasAnyRole("ADMIN", "MANAGER")
+                        .requestMatchers("/api/vi-tri-kho/**").hasAnyRole("ADMIN", "MANAGER")
                         .requestMatchers("/api/nhan-vien/**").hasRole("MANAGER")
                         .requestMatchers(HttpMethod.GET, "/api/khach-hang/lua-chon").hasAnyRole("MANAGER", "EMPLOYEE")
                         .requestMatchers("/api/nha-cung-cap/**", "/api/khach-hang/**").hasRole("MANAGER")
@@ -84,7 +88,7 @@ public class SecurityConfig {
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource(
-            @Value("${app.cors.allowed-origin:http://localhost:5173}") String allowedOrigin
+            @Value("${app.cors.allowed-origin:https://numeral-tricolor-batch.ngrok-free.dev}") String allowedOrigin
     ) {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of(allowedOrigin));

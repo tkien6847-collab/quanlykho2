@@ -4,7 +4,7 @@
 
 ## Công nghệ
 
-- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS.
+- **Frontend:** React 18, TypeScript, Vite, Tailwind CSS và CSS tùy chỉnh. Dự án không dùng Bootstrap.
 - **Backend:** Java 21, Spring Boot 3, Spring MVC, Spring Security, Spring Data JPA, JWT.
 - **Cơ sở dữ liệu:** MySQL.
 - **API client:** Postman collection trong `postman/`.
@@ -88,7 +88,17 @@ npm install
 npm run dev
 ```
 
-Mặc định `VITE_API_BASE_URL=http://localhost:8080`; cập nhật `frontend/.env` nếu backend dùng địa chỉ khác. Vite phục vụ ứng dụng tại `http://localhost:5173`. Mở địa chỉ này để đăng nhập. Backend `/` chuyển hướng về frontend theo `FRONTEND_URL`.
+Trong phát triển, Vite phục vụ ứng dụng tại `http://localhost:5173`. Frontend gọi API cùng origin theo mặc định; đặt `VITE_API_BASE_URL` trong `frontend/.env` chỉ khi API nằm ở origin khác.
+
+### Chia sẻ bản phát triển qua ngrok
+
+Khởi động backend trên cổng `8081` và Vite trên cổng `5173`. Vite tự chuyển tiếp các request `/api` sang backend, vì vậy ngrok cần trỏ tới Vite:
+
+```powershell
+ngrok http 5173 --url=https://numeral-tricolor-batch.ngrok-free.dev
+```
+
+Mở `https://numeral-tricolor-batch.ngrok-free.dev` để dùng ứng dụng. Vite cần được khởi động lại sau khi sửa `vite.config.ts`. Backend cho phép CORS từ domain ngrok này theo cấu hình mặc định.
 
 Các lệnh frontend:
 

@@ -19,4 +19,18 @@ public interface ChiTietPhieuNhapRepository extends JpaRepository<ChiTietPhieuNh
     @Query("select sum(detail.soLuongNhap) from ChiTietPhieuNhap detail, PhieuNhap document " +
             "where detail.id.maPN = document.maPN and document.ngayNhap between :startDate and :endDate")
     Long sumQuantityByDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Query("select detail.id.maHH, sum(detail.soLuongNhap) from ChiTietPhieuNhap detail, PhieuNhap document " +
+            "where detail.id.maPN = document.maPN and document.ngayNhap between :startDate and :endDate " +
+            "group by detail.id.maHH")
+    List<Object[]> sumQuantityByProductAndDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Query("select document.ngayNhap, sum(detail.soLuongNhap) from ChiTietPhieuNhap detail, PhieuNhap document " +
+            "where detail.id.maPN = document.maPN and document.ngayNhap between :startDate and :endDate " +
+            "group by document.ngayNhap")
+    List<Object[]> sumQuantityByEachDate(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Query("select sum(detail.soLuongNhap) from ChiTietPhieuNhap detail, PhieuNhap document " +
+            "where detail.id.maPN = document.maPN and document.ngayNhap < :beforeDate")
+    Long sumQuantityBeforeDate(@Param("beforeDate") LocalDate beforeDate);
 }

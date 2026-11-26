@@ -19,4 +19,18 @@ public interface ChiTietPhieuXuatRepository extends JpaRepository<ChiTietPhieuXu
     @Query("select sum(detail.soLuongXuat) from ChiTietPhieuXuat detail, PhieuXuat document " +
             "where detail.id.maPX = document.maPX and document.ngayXuat between :startDate and :endDate")
     Long sumQuantityByDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Query("select detail.id.maHH, sum(detail.soLuongXuat) from ChiTietPhieuXuat detail, PhieuXuat document " +
+            "where detail.id.maPX = document.maPX and document.ngayXuat between :startDate and :endDate " +
+            "group by detail.id.maHH")
+    List<Object[]> sumQuantityByProductAndDateRange(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Query("select document.ngayXuat, sum(detail.soLuongXuat) from ChiTietPhieuXuat detail, PhieuXuat document " +
+            "where detail.id.maPX = document.maPX and document.ngayXuat between :startDate and :endDate " +
+            "group by document.ngayXuat")
+    List<Object[]> sumQuantityByEachDate(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    @Query("select sum(detail.soLuongXuat) from ChiTietPhieuXuat detail, PhieuXuat document " +
+            "where detail.id.maPX = document.maPX and document.ngayXuat < :beforeDate")
+    Long sumQuantityBeforeDate(@Param("beforeDate") LocalDate beforeDate);
 }

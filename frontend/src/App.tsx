@@ -76,7 +76,9 @@ export default function App() {
 
   const allowedPages = getNavigation(role).map((item) => item.id);
   const navigate = (nextPage: PageId) => {
-    if (nextPage === "profile" || allowedPages.includes(nextPage)) setPage(nextPage);
+    if (nextPage === "profile" || allowedPages.includes(nextPage)
+      || (nextPage === "stock-search" && allowedPages.includes("inventory"))
+      || (nextPage === "storage" && allowedPages.includes("storage"))) setPage(nextPage);
   };
 
   return (

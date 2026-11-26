@@ -14,26 +14,23 @@ const navigationByRole: Record<Role, NavigationItem[]> = {
     { id: "accounts", label: "Quản lý tài khoản", icon: "♙", group: "QUẢN TRỊ" },
     { id: "categories", label: "Quản lý danh mục", icon: "▤", group: "QUẢN TRỊ" },
     { id: "reports", label: "Thống kê & báo cáo", icon: "▤", group: "QUẢN TRỊ" },
-    { id: "approve-inbound", label: "Duyệt phiếu nhập", icon: "↓", group: "QUẢN TRỊ" },
-    { id: "approve-outbound", label: "Duyệt phiếu xuất", icon: "↑", group: "QUẢN TRỊ" },
+    { id: "manage-inout", label: "Quản lý nhập xuất", icon: "⇅", group: "QUẢN TRỊ" },
   ],
   manager: [
     { id: "dashboard", label: "Tổng quan", icon: "▦", group: "TỔNG QUAN" },
     { id: "reports", label: "Thống kê & báo cáo", icon: "▤", group: "KHO HÀNG" },
     { id: "partners", label: "NCC / Khách hàng", icon: "♧", group: "KHO HÀNG" },
     { id: "employees", label: "Quản lý nhân viên", icon: "♙", group: "KHO HÀNG" },
-    { id: "approve-inbound", label: "Duyệt phiếu nhập", icon: "↓", group: "KHO HÀNG" },
-    { id: "approve-outbound", label: "Duyệt phiếu xuất", icon: "↑", group: "KHO HÀNG" },
+    { id: "manage-inout", label: "Quản lý nhập xuất", icon: "⇅", group: "KHO HÀNG" },
     { id: "inventory", label: "Quản lý hàng hóa", icon: "▣", group: "KHO HÀNG" },
+    { id: "storage", label: "Vị trí lưu trữ", icon: "▤", group: "KHO HÀNG" },
     { id: "categories", label: "Quản lý danh mục", icon: "▤", group: "KHO HÀNG" },
-    { id: "stock-search", label: "Tra cứu tồn kho", icon: "⌕", group: "KHO HÀNG" },
   ],
   employee: [
     { id: "dashboard", label: "Tổng quan", icon: "▦", group: "TỔNG QUAN" },
     { id: "outbound", label: "Lập phiếu xuất kho", icon: "↑", group: "NGHIỆP VỤ" },
     { id: "inbound", label: "Lập phiếu nhập kho", icon: "↓", group: "NGHIỆP VỤ" },
     { id: "inventory", label: "Quản lý hàng hóa", icon: "▣", group: "NGHIỆP VỤ" },
-    { id: "stock-search", label: "Tra cứu tồn kho", icon: "⌕", group: "NGHIỆP VỤ" },
   ],
 };
 
@@ -67,13 +64,13 @@ export default function Sidebar({ role, activePage, isOpen, onNavigate, onClose 
               <p className="nav-heading">{group}</p>
               {items.filter((item) => item.group === group).map((item) => (
                 <button
-                  className={`nav-item ${activePage === item.id ? "nav-item-active" : ""}`}
+                  className={`nav-item ${activePage === item.id || (item.id === "inventory" && activePage === "stock-search") ? "nav-item-active" : ""}`}
                   key={item.id}
                   onClick={() => { onNavigate(item.id); onClose(); }}
                 >
                   <span className="nav-icon">{item.icon}</span>
                   <span>{item.label}</span>
-                  {activePage === item.id && <span className="nav-active-mark" />}
+                  {(activePage === item.id || (item.id === "inventory" && activePage === "stock-search")) && <span className="nav-active-mark" />}
                 </button>
               ))}
             </div>
